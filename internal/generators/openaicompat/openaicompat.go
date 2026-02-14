@@ -248,24 +248,26 @@ func NewGenerator(cfg registry.Config, pc ProviderConfig) (*CompatGenerator, err
 	}
 	g.model = model
 
-	// API key: from config or env var
+	// Determine base URL
+	baseURL := pc.DefaultBaseURL
+	if configured, ok := cfg["base_url"].(string); ok && configured != "" {
+		baseURL = configured
+	}
+
+	// API key: from config or env var, unless using local base URL
 	apiKey := ""
 	if key, ok := cfg["api_key"].(string); ok && key != "" {
 		apiKey = key
 	} else {
 		apiKey = os.Getenv(pc.EnvVar)
 	}
-	if apiKey == "" {
+	if apiKey == "" && !IsLocalBaseURL(baseURL) {
 		return nil, fmt.Errorf("%s generator requires 'api_key' configuration or %s environment variable", pc.Provider, pc.EnvVar)
 	}
 
 	// Create client config
 	config := goopenai.DefaultConfig(apiKey)
-	if baseURL, ok := cfg["base_url"].(string); ok && baseURL != "" {
-		config.BaseURL = baseURL
-	} else {
-		config.BaseURL = pc.DefaultBaseURL
-	}
+	config.BaseURL = baseURL
 	g.client = goopenai.NewClientWithConfig(config)
 
 	// Optional parameters
