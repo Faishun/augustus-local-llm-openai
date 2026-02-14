@@ -113,6 +113,17 @@ func TestReasoningConfigFromMap_RequiresAPIKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "api_key")
 }
 
+func TestReasoningConfigFromMap_AllowsLocalBaseURLWithoutAPIKey(t *testing.T) {
+	cfgMap := registry.Config{
+		"model":    "o1-mini",
+		"base_url": "http://localhost:8000/v1",
+	}
+
+	cfg, err := ReasoningConfigFromMap(cfgMap)
+	require.NoError(t, err)
+	assert.Empty(t, cfg.APIKey)
+}
+
 func TestReasoningConfigFromMap_Defaults(t *testing.T) {
 	cfgMap := registry.Config{
 		"model":   "o1-mini",
