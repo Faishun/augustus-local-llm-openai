@@ -103,6 +103,27 @@ func TestOpenAIGenerator_RequiresAPIKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "api_key")
 }
 
+func TestOpenAIGenerator_AllowsLocalBaseURLWithoutAPIKey(t *testing.T) {
+	// Create mock server on localhost
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(mockOpenAIResponse("response", 1))
+	}))
+	defer server.Close()
+
+	g, err := NewOpenAI(registry.Config{
+		"model":    "gpt-4",
+		"base_url": server.URL,
+	})
+	require.NoError(t, err)
+
+	conv := attempt.NewConversation()
+	conv.AddPrompt("test")
+
+	_, err = g.Generate(context.Background(), conv, 1)
+	assert.NoError(t, err)
+}
+
 func TestOpenAIGenerator_APIKeyFromEnv(t *testing.T) {
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
