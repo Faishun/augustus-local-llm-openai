@@ -77,6 +77,22 @@ func TestBaseConfigFromMap_DefaultValues(t *testing.T) {
 	}
 }
 
+func TestBaseConfigFromMap_AllowsLocalBaseURLWithoutAPIKey(t *testing.T) {
+	m := registry.Config{
+		"model":    "gpt-4",
+		"base_url": "http://localhost:8000/v1",
+	}
+
+	cfg, err := BaseConfigFromMap(m, "TEST_API_KEY", "testprovider")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if cfg.APIKey != "" {
+		t.Errorf("Expected empty api_key for local base_url, got %q", cfg.APIKey)
+	}
+}
+
 func TestBaseConfig_String_MasksAPIKey(t *testing.T) {
 	cfg := BaseConfig{
 		Model:  "gpt-4",
