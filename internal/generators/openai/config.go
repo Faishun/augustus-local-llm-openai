@@ -3,6 +3,7 @@ package openai
 import (
 	"fmt"
 
+	"github.com/praetorian-inc/augustus/internal/generators/openaicompat"
 	"github.com/praetorian-inc/augustus/pkg/registry"
 )
 
@@ -41,14 +42,16 @@ func ConfigFromMap(m registry.Config) (Config, error) {
 	}
 	cfg.Model = model
 
-	// API key: from config or env var
-	cfg.APIKey, err = registry.GetAPIKeyWithEnv(m, "OPENAI_API_KEY", "openai")
-	if err != nil {
-		return cfg, err
-	}
-
 	// Optional parameters
 	cfg.BaseURL = registry.GetString(m, "base_url", "")
+
+	// API key: from config or env var, unless using local base URL
+	cfg.APIKey = registry.GetOptionalAPIKeyWithEnv(m, "OPENAI_API_KEY")
+	if cfg.APIKey == "" && !openaicompat.IsLocalBaseURL(cfg.BaseURL) {
+		return cfg, fmt.Errorf("openai generator requires 'api_key' configuration or OPENAI_API_KEY environment variable")
+	}
+
+	// Optional parameters continued
 	cfg.Temperature = registry.GetFloat32(m, "temperature", cfg.Temperature)
 	cfg.MaxTokens = registry.GetInt(m, "max_tokens", cfg.MaxTokens)
 	cfg.TopP = registry.GetFloat32(m, "top_p", cfg.TopP)
