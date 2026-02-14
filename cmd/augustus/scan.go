@@ -34,8 +34,8 @@ type scanConfig struct {
 	configFile    string // YAML config file path
 	configJSON    string
 	outputFormat  string
-	outputFile    string        // JSONL output file path
-	htmlFile      string        // HTML report file path
+	outputFile    string // JSONL output file path
+	htmlFile      string // HTML report file path
 	verbose       bool
 	allProbes     bool          // Run all registered probes
 	timeout       time.Duration // Overall scan timeout
@@ -302,7 +302,11 @@ func runScan(ctx context.Context, cfg *scanConfig, eval harnesses.Evaluator) err
 	// Create probes
 	probeList := make([]probes.Prober, 0, len(probeNames))
 	for _, probeName := range probeNames {
-		probe, err := probes.Create(probeName, registry.Config{})
+		probeCfg := registry.Config{}
+		if probeName == "pair.IterativePAIR" || probeName == "tap.IterativeTAP" {
+			probeCfg = defaultIterativeProbeConfig(cfg.generatorName, genConfig)
+		}
+		probe, err := probes.Create(probeName, probeCfg)
 		if err != nil {
 			return fmt.Errorf("failed to create probe %s: %w", probeName, err)
 		}
@@ -331,9 +335,19 @@ func runScan(ctx context.Context, cfg *scanConfig, eval harnesses.Evaluator) err
 		}
 
 		for detectorName := range uniqueDetectors {
-			detector, err := detectors.Create(detectorName, registry.Config{})
+			detectorCfg := registry.Config{}
+			if detectorName == "judge.Judge" || detectorName == "judge.Refusal" {
+				detectorCfg["judge_generator_type"] = cfg.generatorName
+				detectorCfg["judge_generator_config"] = cloneConfig(genConfig)
+				if model, ok := genConfig["model"].(string); ok && model != "" {
+					detectorCfg["judge_model"] = model
+				}
+			}
+
+			detector, err := detectors.Create(detectorName, detectorCfg)
 			if err != nil {
-				return fmt.Errorf("failed to create detector %s: %w", detectorName, err)
+				fmt.Printf("Warning: skipping detector %s: %v\n", detectorName, err)
+				continue
 			}
 			detectorList = append(detectorList, detector)
 		}
@@ -404,6 +418,26 @@ func runScan(ctx context.Context, cfg *scanConfig, eval harnesses.Evaluator) err
 
 	// Run the scan
 	return harness.Run(ctx, gen, probeList, detectorList, eval)
+}
+
+func defaultIterativeProbeConfig(generatorName string, genConfig registry.Config) registry.Config {
+	attackerCfg := cloneConfig(genConfig)
+	judgeCfg := cloneConfig(genConfig)
+
+	return registry.Config{
+		"attacker_generator_type": generatorName,
+		"attacker_config":         attackerCfg,
+		"judge_generator_type":    generatorName,
+		"judge_config":            judgeCfg,
+	}
+}
+
+func cloneConfig(cfg registry.Config) map[string]any {
+	clone := make(map[string]any, len(cfg))
+	for k, v := range cfg {
+		clone[k] = v
+	}
+	return clone
 }
 
 // Evaluator implementations
