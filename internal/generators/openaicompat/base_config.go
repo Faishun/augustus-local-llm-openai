@@ -40,15 +40,15 @@ func BaseConfigFromMap(m registry.Config, envVar, providerName string) (BaseConf
 	}
 	cfg.Model = model
 
-	// Required: API key (from config or environment)
-	apiKey, err := registry.GetAPIKeyWithEnv(m, envVar, providerName)
-	if err != nil {
-		return cfg, err
-	}
-	cfg.APIKey = apiKey
-
 	// Optional: base_url (provider default if not specified)
 	cfg.BaseURL = registry.GetString(m, "base_url", "")
+
+	// Required: API key (from config or environment), unless using local base URL
+	apiKey := registry.GetOptionalAPIKeyWithEnv(m, envVar)
+	if apiKey == "" && !IsLocalBaseURL(cfg.BaseURL) {
+		return cfg, fmt.Errorf("%s generator requires 'api_key' configuration or %s environment variable", providerName, envVar)
+	}
+	cfg.APIKey = apiKey
 
 	// Optional: temperature with default
 	cfg.Temperature = registry.GetFloat32(m, "temperature", cfg.Temperature)
