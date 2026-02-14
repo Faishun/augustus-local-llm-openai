@@ -2,6 +2,8 @@
 
 > Official repo for more commands/probes/docs: https://github.com/praetorian-inc/augustus
 
+**Install Go:** https://go.dev/dl/
+
 Run a simple quick test:
 ```bash
 ./bin/augustus scan openai.OpenAI \
