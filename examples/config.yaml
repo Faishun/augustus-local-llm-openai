@@ -12,9 +12,11 @@ run:
 # Generator configurations
 generators:
   openai.OpenAI:
-    model: "gpt-4"
+    model: "qwen/qwen3-4b-2507"
     temperature: 0.7
-    api_key: "${OPENAI_API_KEY}"  # Environment variable interpolation
+    api_key: "lmstudio"  # Environment variable interpolation
+    # For local OpenAI-compatible servers, set base_url and omit api_key:
+    base_url: "http://localhost:8000/v1"
 
   anthropic.Anthropic:
     model: "claude-3-opus-20240229"
