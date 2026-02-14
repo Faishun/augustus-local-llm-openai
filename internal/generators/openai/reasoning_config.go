@@ -3,6 +3,7 @@ package openai
 import (
 	"fmt"
 
+	"github.com/praetorian-inc/augustus/internal/generators/openaicompat"
 	"github.com/praetorian-inc/augustus/pkg/registry"
 )
 
@@ -44,14 +45,16 @@ func ReasoningConfigFromMap(m registry.Config) (ReasoningConfig, error) {
 	}
 	cfg.Model = model
 
-	// API key: from config or env var
-	cfg.APIKey, err = registry.GetAPIKeyWithEnv(m, "OPENAI_API_KEY", "openai reasoning")
-	if err != nil {
-		return cfg, err
-	}
-
 	// Optional parameters
 	cfg.BaseURL = registry.GetString(m, "base_url", "")
+
+	// API key: from config or env var, unless using local base URL
+	cfg.APIKey = registry.GetOptionalAPIKeyWithEnv(m, "OPENAI_API_KEY")
+	if cfg.APIKey == "" && !openaicompat.IsLocalBaseURL(cfg.BaseURL) {
+		return cfg, fmt.Errorf("openai reasoning generator requires 'api_key' configuration or OPENAI_API_KEY environment variable")
+	}
+
+	// Optional parameters continued
 	cfg.MaxCompletionTokens = registry.GetInt(m, "max_completion_tokens", cfg.MaxCompletionTokens)
 	cfg.TopP = registry.GetFloat32(m, "top_p", cfg.TopP)
 	cfg.FrequencyPenalty = registry.GetFloat32(m, "frequency_penalty", cfg.FrequencyPenalty)
