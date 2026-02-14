@@ -68,7 +68,7 @@ func NewOpenAITyped(cfg Config) (*OpenAI, error) {
 	if cfg.Model == "" {
 		return nil, fmt.Errorf("openai generator requires model")
 	}
-	if cfg.APIKey == "" {
+	if cfg.APIKey == "" && !openaicompat.IsLocalBaseURL(cfg.BaseURL) {
 		return nil, fmt.Errorf("openai generator requires api_key")
 	}
 
