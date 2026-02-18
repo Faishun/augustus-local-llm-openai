@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/alecthomas/kong"
 
@@ -130,9 +131,15 @@ import (
 	_ "github.com/praetorian-inc/augustus/internal/buffs/paraphrase"
 	_ "github.com/praetorian-inc/augustus/internal/buffs/poetry"
 	_ "github.com/praetorian-inc/augustus/internal/buffs/smuggling"
+
+	"github.com/praetorian-inc/augustus/pkg/probes"
+	"github.com/praetorian-inc/augustus/pkg/registry"
+	"github.com/praetorian-inc/augustus/pkg/templates"
 )
 
 func main() {
+	loadCustomTemplatesFromEnv()
+
 	// Parse with custom exit handler to enforce proper exit codes:
 	// 0 = success, 1 = scan/runtime error, 2 = validation/usage error
 	ctx := kong.Parse(&CLI,
@@ -155,5 +162,34 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func loadCustomTemplatesFromEnv() {
+	// Enable runtime loading of YAML probe templates without recompilation.
+	// Format: colon-separated directories (like PATH). Example:
+	//   export AUGUSTUS_TEMPLATE_DIR="/path/to/templates:/other/path"
+	raw := strings.TrimSpace(os.Getenv("AUGUSTUS_TEMPLATE_DIR"))
+	if raw == "" {
+		return
+	}
+
+	for _, dir := range strings.Split(raw, ":") {
+		dir = strings.TrimSpace(dir)
+		if dir == "" {
+			continue
+		}
+		tmpls, err := templates.LoadFromPath(dir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load templates from %s: %v\n", dir, err)
+			continue
+		}
+		for _, tmpl := range tmpls {
+			t := tmpl
+			factory := func(_ registry.Config) (probes.Prober, error) {
+				return templates.NewTemplateProbe(t), nil
+			}
+			probes.Register(t.ID, factory)
+		}
 	}
 }
