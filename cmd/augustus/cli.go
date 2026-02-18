@@ -42,9 +42,15 @@ func (h *HelpCmd) Run(ctx *kong.Context) error {
 }
 
 // ListCmd lists available capabilities.
-type ListCmd struct{}
+type ListCmd struct {
+	JSON bool `help:"Output probe list as JSON with name and description (when available)." short:"j"`
+}
 
 func (l *ListCmd) Run() error {
+	if l.JSON {
+		listCapabilitiesJSON()
+		return nil
+	}
 	listCapabilities()
 	return nil
 }
